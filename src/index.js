@@ -1,15 +1,29 @@
+require("dotenv").config();
 
-const express = require("express");
+const app = require("./app");
+const prisma = require("./db");
 
-const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(express.json());
+async function startServer() {
+  try {
+    await prisma.$connect();
 
-app.get("/health", (req, res) => {
-  res.status(200).json({ status: "OK" });
-});
+    app.listen(PORT, () => {
+      console.log(`InstaLite running at http://localhost:${PORT}`);
+    });
+  } catch (error) {
+    console.error("Unable to connect to the database:", error.message);
+    process.exit(1);
+  }
+}
 
-app.listen(PORT, () => {
-  console.log(`Server started on port ${PORT}`);
-});
+startServer();
+
+async function shutdown() {
+  await prisma.$disconnect();
+  process.exit(0);
+}
+
+process.on("SIGINT", shutdown);
+process.on("SIGTERM", shutdown);
