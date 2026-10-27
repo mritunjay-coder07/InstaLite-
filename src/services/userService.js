@@ -1,7 +1,7 @@
 const prisma = require("../db");
 
-exports.createUser = (data) =>
-  prisma.user.create({
+exports.createUser = (data) => {
+  return prisma.user.create({
     data: {
       username: data.username.trim(),
       email: data.email.trim(),
@@ -10,34 +10,63 @@ exports.createUser = (data) =>
       isPrivate: data.isPrivate ?? false,
     },
   });
+};
 
-exports.getUsers = () =>
-  prisma.user.findMany({
+exports.getUsers = ({ q, limit = 10, offset = 0 } = {}) => {
+  const where = q
+    ? {
+        OR: [
+          { username: { contains: q, mode: "insensitive" } },
+          { email: { contains: q, mode: "insensitive" } },
+        ],
+      }
+    : {};
+
+  return prisma.user.findMany({
+    where,
     orderBy: { createdAt: "desc" },
+    take: limit,
+    skip: offset,
   });
+};
 
-exports.getUserById = (id) =>
-  prisma.user.findUnique({
+exports.getUserById = (id) => {
+  return prisma.user.findUnique({
     where: { id },
-    include: { posts: true },
+    include: {
+      posts: {
+        orderBy: { createdAt: "desc" },
+      },
+      _count: { select: { posts: true, likes: true } },
+    },
   });
+};
 
 exports.updateUser = (id, data) => {
   const allowed = {};
 
   for (const key of ["username", "email", "fullname", "bio", "isPrivate"]) {
-    if (data[key] !== undefined) allowed[key] = data[key];
+    if (data[key] !== undefined) {
+      allowed[key] = data[key];
+    }
   }
 
   if (typeof allowed.username === "string") {
     allowed.username = allowed.username.trim();
   }
+
   if (typeof allowed.email === "string") {
     allowed.email = allowed.email.trim();
   }
 
-  return prisma.user.update({ where: { id }, data: allowed });
+  return prisma.user.update({
+    where: { id },
+    data: allowed,
+  });
 };
 
-exports.deleteUser = (id) =>
-  prisma.user.delete({ where: { id } });
+exports.deleteUser = (id) => {
+  return prisma.user.delete({
+    where: { id },
+  });
+};
